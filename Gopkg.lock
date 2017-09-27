@@ -62,10 +62,10 @@
   revision = "dee3fe6eb0e98dc774a94fc231f85baf7c29d360"
 
 [[projects]]
+  branch = "master"
   name = "github.com/decred/dcrd"
   packages = ["blockchain","blockchain/internal/dbnamespace","blockchain/internal/progresslog","blockchain/stake","blockchain/stake/internal/dbnamespace","blockchain/stake/internal/ticketdb","blockchain/stake/internal/tickettreap","chaincfg","chaincfg/chainec","chaincfg/chainhash","database","database/ffldb","database/internal/treap","dcrec/edwards","dcrec/secp256k1","dcrec/secp256k1/schnorr","dcrjson","txscript","wire"]
-  revision = "1500e972e2b0f0a687bc83308c868708ca5f7c16"
-  version = "v1.1.0"
+  revision = "f11fac8134626768ef7b1f278fd4331f004bfb49"
 
 [[projects]]
   branch = "master"
@@ -80,10 +80,10 @@
   revision = "ddbde93f65ab0692e54ed8a5ad325fa2e8af4daa"
 
 [[projects]]
+  branch = "master"
   name = "github.com/decred/dcrwallet"
-  packages = ["apperrors","chain","internal/zero","netparams","snacl","wallet/udb","walletdb"]
-  revision = "cf426bf26d89e6b0c750bd0cdb0f2b2635eecda9"
-  version = "v1.1.0"
+  packages = ["apperrors","internal/zero","netparams","snacl","wallet/udb","walletdb"]
+  revision = "01507bf994ee7e94ceb090a0d14c1a28aef32d95"
 
 [[projects]]
   branch = "master"
@@ -110,6 +110,12 @@
   revision = "a93b200c26cbae3bb09dd0dc2c7c7fe1468a034a"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/lib/pq"
+  packages = [".","oid"]
+  revision = "b77235e3890a962fe8a6f8c4c7198679ca7814e7"
+
+[[projects]]
   name = "github.com/mattn/go-colorable"
   packages = ["."]
   revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
@@ -131,6 +137,12 @@
   name = "github.com/mgutz/ansi"
   packages = ["."]
   revision = "9520e82c474b0a04dd04f8a40959027271bab992"
+
+[[projects]]
+  branch = "addlog"
+  name = "github.com/prometheus/common"
+  packages = ["log"]
+  revision = "89d80287644767070914e30199b4d959e491bd3d"
 
 [[projects]]
   name = "github.com/rs/cors"
@@ -158,12 +170,12 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = ["unix","windows","windows/registry","windows/svc/eventlog"]
   revision = "429f518978ab01db8bb6f44b66785088e7fba58b"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d6fdc275face19089facee6ea06b0f2ab05bad9cf80db34338979063f3f5f970"
+  inputs-digest = "65d5949035e487a096c2edbd2dddfe1c99952726e1330953eb1669d10086ce7e"
   solver-name = "gps-cdcl"
   solver-version = 1
