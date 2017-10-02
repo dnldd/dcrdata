@@ -188,6 +188,12 @@ func mainCore() error {
 		if err = dcrpg.DeindexVinTableOnPrevOuts(db); err != nil {
 			log.Warnln(err)
 		}
+		if err = dcrpg.DeindexVoutTableOnTxHashIdx(db); err != nil {
+			log.Warnln(err)
+		}
+		if err = dcrpg.DeindexVoutTableOnTxHash(db); err != nil {
+			log.Warnln(err)
+		}
 	}
 
 	startHeight := lastBlock + 1
@@ -409,6 +415,14 @@ func mainCore() error {
 		log.Infof("Indexing vins table on prevouts...")
 		if err = dcrpg.IndexVinTableOnPrevOuts(db); err != nil {
 			return err
+		}
+		log.Infof("Indexing vouts table on tx hash and index...")
+		if err = dcrpg.IndexVoutTableOnTxHashIdx(db); err != nil {
+			log.Warnln(err)
+		}
+		log.Infof("Indexing vouts table on tx hash...")
+		if err = dcrpg.IndexVoutTableOnTxHash(db); err != nil {
+			log.Warnln(err)
 		}
 	}
 

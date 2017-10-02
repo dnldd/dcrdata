@@ -54,21 +54,21 @@ const (
 	WHERE  tx_hash = $3 AND block_hash = $1
 	LIMIT  1;`
 
-	insertVoutRow0 = `INSERT INTO vouts (outpoint, value, ind, version,
-		pkscript, script_req_sigs, script_type, script_addresses)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, %s) `
+	insertVoutRow0 = `INSERT INTO vouts (tx_hash, tx_index, tx_tree, value, 
+		version, pkscript, script_req_sigs, script_type, script_addresses)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, %s) `
 	insertVoutRow         = insertVoutRow0 + `RETURNING id;`
-	insertVoutRowChecked  = insertVoutRow0 + `ON CONFLICT (outpoint) DO NOTHING RETURNING id;`
+	insertVoutRowChecked  = insertVoutRow0 + `ON CONFLICT (tx_hash, tx_index) DO NOTHING RETURNING id;`
 	insertVoutRowReturnId = `WITH ins AS (` +
 		insertVoutRow0 +
 		`ON CONFLICT (outpoint) DO UPDATE
-		SET outpoint = NULL WHERE FALSE
+		SET tx_hash = NULL WHERE FALSE
 		RETURNING id
 		)
 	 SELECT id FROM ins
 	 UNION  ALL
 	 SELECT id FROM vouts
-	 WHERE  outpoint = $1
+	 WHERE  tx_hash = $1 AND tx_index = $2
 	 LIMIT  1;`
 
 	CreateBlockTable = `CREATE TABLE IF NOT EXISTS blocks (  
@@ -111,14 +111,11 @@ const (
 	RetrieveBestBlockHeight = `SELECT id, hash, height FROM blocks ORDER BY height DESC LIMIT 1;`
 
 	CreateVinType = `CREATE TYPE vin AS (
-		prev_out TEXT,
 		prev_tx_hash TEXT,
 		prev_tx_index INTEGER,
 		prev_tx_tree SMALLINT,
-		sequence INTEGER,
+		htlc_seq_VAL INTEGER,
 		value_in DOUBLE PRECISION,
-		block_height INT4,
-		block_index INT4,
 		script_hex BYTEA
 	);`
 
@@ -145,6 +142,15 @@ const (
 	DeindexVinTableOnVins     = `DROP INDEX uix_vin;`
 	DeindexVinTableOnPrevOuts = `DROP INDEX uix_vin_prevout;`
 
+	CreateVoutType = `CREATE TYPE vout AS (
+		value INT8,
+		version INT2,
+		pkscript BYTEA,
+		script_req_sigs INT4,
+		script_type TEXT,
+		script_addresses TEXT[]
+	);`
+
 	CreateTransactionTable = `CREATE TABLE IF NOT EXISTS transactions (
 		id SERIAL8 PRIMARY KEY,
 		/*block_db_id INT4,*/
@@ -159,6 +165,7 @@ const (
 		vins JSONB,
 		vin_db_ids INT8[],
 		num_vout INT4,
+		vouts VOUT[],
 		vout_db_ids INT8[]
 	);`
 
@@ -185,10 +192,10 @@ const (
 
 	CreateVoutTable = `CREATE TABLE IF NOT EXISTS vouts (
 		id SERIAL8 PRIMARY KEY,
-		/* tx_db_id INT8, */
-		outpoint TEXT, -- UNIQUE
+		tx_hash TEXT,
+		tx_index INT4,
+		tx_tree INT2,
 		value INT8,
-		ind INT4,
 		version INT2,
 		pkscript BYTEA,
 		script_req_sigs INT4,
@@ -197,6 +204,14 @@ const (
 	);`
 
 	SelectVoutByID = `SELECT * FROM vouts WHERE id=$1;`
+
+	IndexVoutTableOnTxHashIdx = `CREATE UNIQUE INDEX uix_vout_txhash_ind
+		ON vouts(tx_hash, tx_index);`
+	DeindexVoutTableOnTxHashIdx = `DROP INDEX uix_vout_txhash_ind;`
+
+	IndexVoutTableOnTxHash = `CREATE INDEX uix_vout_txhash
+		ON vouts(tx_hash,);`
+	DeindexVoutTableOnTxHash = `DROP INDEX uix_vout_txhash;`
 
 	CreateBlockPrevNextTable = `CREATE TABLE IF NOT EXISTS block_chain (
 		block_db_id INT8 PRIMARY KEY,
