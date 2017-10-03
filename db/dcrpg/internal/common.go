@@ -25,7 +25,7 @@ func makeARRAYOfUnquotedTEXT(text []string) string {
 	sTEXTARRAY := "ARRAY["
 	for i, txt := range text {
 		if i == len(text)-1 {
-			sTEXTARRAY += fmt.Sprintf(`%s`, txt)
+			sTEXTARRAY += txt
 			break
 		}
 		sTEXTARRAY += fmt.Sprintf(`%s, `, txt)
