@@ -132,9 +132,10 @@ type Tx struct {
 	Locktime   uint32             `json:"locktime"`
 	Expiry     uint32             `json:"expiry"`
 	NumVin     uint32             `json:"numvin"`
-	Vins       VinTxPropertyARRAY `json:"vin"`
+	Vins       VinTxPropertyARRAY `json:"vins"`
 	VinDbIds   []uint64           `json:"vindbids"`
 	NumVout    uint32             `json:"numvout"`
+	Vouts      []*Vout            `json:"vouts"`
 	VoutDbIds  []uint64           `json:"voutdbids"`
 	// NOTE: VoutDbIds may not be needed if there is a vout table since each
 	// vout will have a tx_dbid

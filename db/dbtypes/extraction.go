@@ -67,7 +67,7 @@ func processTransactions(txs []*wire.MsgTx, blockHash chainhash.Hash,
 			})
 		}
 
-		dbTx.VinDbIds = make([]uint64, int(dbTx.NumVin))
+		//dbTx.VinDbIds = make([]uint64, int(dbTx.NumVin))
 
 		// Vouts and their db IDs
 		dbTxVouts[txIndex] = make([]*Vout, 0, len(tx.TxOut))
@@ -95,7 +95,7 @@ func processTransactions(txs []*wire.MsgTx, blockHash chainhash.Hash,
 			dbTxVouts[txIndex] = append(dbTxVouts[txIndex], &vout)
 		}
 
-		dbTx.VoutDbIds = make([]uint64, len(dbTxVouts[txIndex]))
+		//dbTx.VoutDbIds = make([]uint64, len(dbTxVouts[txIndex]))
 
 		dbTransactions = append(dbTransactions, dbTx)
 	}

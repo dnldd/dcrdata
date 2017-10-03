@@ -1,6 +1,11 @@
 package internal
 
-import "fmt"
+import (
+	"encoding/hex"
+	"fmt"
+
+	"github.com/dcrdata/dcrdata/db/dbtypes"
+)
 
 const (
 	// Block insert
@@ -33,11 +38,11 @@ const (
 	insertTxRow0 = `INSERT INTO transactions (
 		block_hash, block_index, tree, tx_hash, version,
 		lock_time, expiry, num_vin, vins, vin_db_ids,
-		num_vout, vout_db_ids)
+		num_vout, vouts, vout_db_ids)
 	VALUES (
 		$1, $2, $3, $4, $5,
 		$6, $7, $8, $9, %s,
-		$10, %s) `
+		$10, %s, %s) `
 	insertTxRow        = insertTxRow0 + `RETURNING id;`
 	insertTxRowChecked = insertTxRow0 + `ON CONFLICT (tx_hash, block_hash) DO NOTHING RETURNING id;`
 	upsertTxRow        = insertTxRow0 + `ON CONFLICT (tx_hash, block_hash) DO UPDATE 
@@ -99,8 +104,7 @@ const (
 		difficulty FLOAT8,
 		extra_data BYTEA,
 		stake_version INT4,
-		previous_hash TEXT,
-		next_hash TEXT
+		previous_hash TEXT
 	);`
 
 	IndexBlockTableOnHash = `CREATE UNIQUE INDEX uix_block_hash
@@ -110,7 +114,7 @@ const (
 	RetrieveBestBlock       = `SELECT * FROM blocks ORDER BY height DESC LIMIT 0, 1;`
 	RetrieveBestBlockHeight = `SELECT id, hash, height FROM blocks ORDER BY height DESC LIMIT 1;`
 
-	CreateVinType = `CREATE TYPE vin AS (
+	CreateVinType = `CREATE TYPE vin_t AS (
 		prev_tx_hash TEXT,
 		prev_tx_index INTEGER,
 		prev_tx_tree SMALLINT,
@@ -142,7 +146,7 @@ const (
 	DeindexVinTableOnVins     = `DROP INDEX uix_vin;`
 	DeindexVinTableOnPrevOuts = `DROP INDEX uix_vin_prevout;`
 
-	CreateVoutType = `CREATE TYPE vout AS (
+	CreateVoutType = `CREATE TYPE vout_t AS (
 		value INT8,
 		version INT2,
 		pkscript BYTEA,
@@ -150,6 +154,11 @@ const (
 		script_type TEXT,
 		script_addresses TEXT[]
 	);`
+
+	RetrieveVoutValues = `WITH vouts AS (
+			SELECT vouts FROM transactions WHERE id = $1
+		) SELECT value FROM vouts;`
+	RetrieveVoutValue = `SELECT vouts[$2].value FROM transactions WHERE id = $1;`
 
 	CreateTransactionTable = `CREATE TABLE IF NOT EXISTS transactions (
 		id SERIAL8 PRIMARY KEY,
@@ -165,9 +174,12 @@ const (
 		vins JSONB,
 		vin_db_ids INT8[],
 		num_vout INT4,
-		vouts VOUT[],
+		vouts vout_t[],
 		vout_db_ids INT8[]
 	);`
+
+	SelectTxByHash       = `SELECT id, block_hash FROM transactions WHERE tx_hash = $1;`
+	SelectTxsByBlockHash = `SELECT id, tx_hash FROM transactions WHERE block_hash = $1;`
 
 	IndexTransactionTableOnBlockIn = `CREATE UNIQUE INDEX uix_tx_block_in
 		ON transactions(block_hash, block_index, tree)
@@ -247,16 +259,31 @@ func MakeVoutInsertStatement(scriptAddresses []string, checked bool) string {
 	return fmt.Sprintf(insert, addrs)
 }
 
-func MakeTxInsertStatement(voutDbIDs, vinDbIDs []uint64, checked bool) string {
+func makeARRAYOfVouts(vouts []*dbtypes.Vout) string {
+	var rowSubStmts []string
+	for i := range vouts {
+		hexPkScript := hex.EncodeToString(vouts[i].ScriptPubKey)
+		rowSubStmts = append(rowSubStmts,
+			fmt.Sprintf(`ROW(%d, %d, decode('%s','hex'), %d, '%s', %s)`,
+				vouts[i].Value, vouts[i].Version, hexPkScript,
+				vouts[i].ScriptPubKeyData.ReqSigs, vouts[i].ScriptPubKeyData.Type,
+				makeARRAYOfTEXT(vouts[i].ScriptPubKeyData.Addresses)))
+	}
+
+	return makeARRAYOfUnquotedTEXT(rowSubStmts) + "::vout_t[]"
+}
+
+func MakeTxInsertStatement(voutDbIDs, vinDbIDs []uint64, vouts []*dbtypes.Vout, checked bool) string {
 	voutDbIDsBIGINT := makeARRAYOfBIGINTs(voutDbIDs)
 	vinDbIDsBIGINT := makeARRAYOfBIGINTs(vinDbIDs)
+	voutCompositeARRAY := makeARRAYOfVouts(vouts)
 	var insert string
 	if checked {
 		insert = insertTxRowChecked
 	} else {
 		insert = insertTxRow
 	}
-	return fmt.Sprintf(insert, voutDbIDsBIGINT, vinDbIDsBIGINT)
+	return fmt.Sprintf(insert, voutDbIDsBIGINT, voutCompositeARRAY, vinDbIDsBIGINT)
 }
 
 func makeARRAYOfTEXT(text []string) string {
@@ -270,6 +297,22 @@ func makeARRAYOfTEXT(text []string) string {
 			break
 		}
 		sTEXTARRAY += fmt.Sprintf(`'%s', `, txt)
+	}
+	sTEXTARRAY += "]"
+	return sTEXTARRAY
+}
+
+func makeARRAYOfUnquotedTEXT(text []string) string {
+	if len(text) == 0 {
+		return "ARRAY[]"
+	}
+	sTEXTARRAY := "ARRAY["
+	for i, txt := range text {
+		if i == len(text)-1 {
+			sTEXTARRAY += fmt.Sprintf(`%s`, txt)
+			break
+		}
+		sTEXTARRAY += fmt.Sprintf(`%s, `, txt)
 	}
 	sTEXTARRAY += "]"
 	return sTEXTARRAY
