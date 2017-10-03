@@ -179,7 +179,7 @@ func mainCore() error {
 	blocksToSync := height - lastBlock
 	reindexing := blocksToSync > height/2
 	dupChecks := true
-	if reindexing {
+	if reindexing || cfg.ResumeInitSync {
 		log.Info("Large bulk load: Removing indexes and disabling duplicate checks.")
 		dupChecks = false
 		if err = dcrpg.DeindexBlockTableOnHash(db); err != nil {
@@ -203,10 +203,6 @@ func mainCore() error {
 		if err = dcrpg.DeindexVoutTableOnTxHash(db); err != nil {
 			log.Warnln(err)
 		}
-	}
-
-	if cfg.ResumeInitSync {
-		dupChecks = false
 	}
 
 	startHeight := lastBlock + 1
@@ -428,7 +424,7 @@ func mainCore() error {
 
 	speedReport()
 
-	if reindexing {
+	if reindexing || cfg.ResumeInitSync {
 		log.Infof("Indexing blocks table...")
 		if err = dcrpg.IndexBlockTableOnHash(db); err != nil {
 			return err
@@ -451,11 +447,11 @@ func mainCore() error {
 		}
 		log.Infof("Indexing vouts table on tx hash and index...")
 		if err = dcrpg.IndexVoutTableOnTxHashIdx(db); err != nil {
-			log.Warnln(err)
+			return err
 		}
 		log.Infof("Indexing vouts table on tx hash...")
 		if err = dcrpg.IndexVoutTableOnTxHash(db); err != nil {
-			log.Warnln(err)
+			return err
 		}
 	}
 
@@ -490,15 +486,16 @@ func mainCore() error {
 	}
 	spew.Dump(txDbIDs, testTxIDs)
 
-	vout1value, err := dcrpg.RetrieveVoutValue(db, txDbID, 1)
+	vout1value, err := dcrpg.RetrieveVoutValue(db, txDbID, 6)
 	if err != nil {
-		return err
+		return fmt.Errorf("RetrieveVoutValue: %v", err)
 	}
+	spew.Dump(vout1value)
 	vout1values, err := dcrpg.RetrieveVoutValues(db, txDbID)
 	if err != nil {
-		return err
+		return fmt.Errorf("RetrieveVoutValues: %v", err)
 	}
-	spew.Dump(vout1value, vout1values)
+	spew.Dump(vout1values, vout1value == vout1values[6])
 
 	return nil
 }

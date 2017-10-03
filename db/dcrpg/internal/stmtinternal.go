@@ -62,11 +62,12 @@ const (
 	insertVoutRow0 = `INSERT INTO vouts (tx_hash, tx_index, tx_tree, value, 
 		version, pkscript, script_req_sigs, script_type, script_addresses)
 	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, %s) `
-	insertVoutRow         = insertVoutRow0 + `RETURNING id;`
-	insertVoutRowChecked  = insertVoutRow0 + `ON CONFLICT (tx_hash, tx_index) DO NOTHING RETURNING id;`
+	insertVoutRow        = insertVoutRow0 + `RETURNING id;`
+	insertVoutRowChecked = insertVoutRow
+	//insertVoutRowChecked  = insertVoutRow0 + `ON CONFLICT (tx_hash, tx_index, tx_tree) DO NOTHING RETURNING id;`
 	insertVoutRowReturnId = `WITH ins AS (` +
 		insertVoutRow0 +
-		`ON CONFLICT (outpoint) DO UPDATE
+		`ON CONFLICT (tx_hash, tx_index) DO UPDATE
 		SET tx_hash = NULL WHERE FALSE
 		RETURNING id
 		)
@@ -155,9 +156,12 @@ const (
 		script_addresses TEXT[]
 	);`
 
-	RetrieveVoutValues = `WITH vouts AS (
-			SELECT vouts FROM transactions WHERE id = $1
-		) SELECT value FROM vouts;`
+	// RetrieveVoutValues = `WITH voutsOnly AS (
+	// 		SELECT unnest((vouts)) FROM transactions WHERE id = $1
+	// 	) SELECT v.* FROM voutsOnly v;`
+	RetrieveVoutValues = `SELECT vo.value
+		FROM  transactions txs, unnest(txs.vouts) vo
+		WHERE txs.id = $1;`
 	RetrieveVoutValue = `SELECT vouts[$2].value FROM transactions WHERE id = $1;`
 
 	CreateTransactionTable = `CREATE TABLE IF NOT EXISTS transactions (
@@ -217,12 +221,13 @@ const (
 
 	SelectVoutByID = `SELECT * FROM vouts WHERE id=$1;`
 
-	IndexVoutTableOnTxHashIdx = `CREATE UNIQUE INDEX uix_vout_txhash_ind
+	// TODO: Why can't this be unique?
+	IndexVoutTableOnTxHashIdx = `CREATE INDEX uix_vout_txhash_ind
 		ON vouts(tx_hash, tx_index);`
 	DeindexVoutTableOnTxHashIdx = `DROP INDEX uix_vout_txhash_ind;`
 
 	IndexVoutTableOnTxHash = `CREATE INDEX uix_vout_txhash
-		ON vouts(tx_hash,);`
+		ON vouts(tx_hash);`
 	DeindexVoutTableOnTxHash = `DROP INDEX uix_vout_txhash;`
 
 	CreateBlockPrevNextTable = `CREATE TABLE IF NOT EXISTS block_chain (

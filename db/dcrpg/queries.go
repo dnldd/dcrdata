@@ -203,7 +203,7 @@ func RetrieveBestBlockHeight(db *sql.DB) (height uint64, hash string, id uint64,
 }
 
 func RetrieveVoutValue(db *sql.DB, txDbID uint64, voutIndex uint32) (value uint64, err error) {
-	err = db.QueryRow(internal.RetrieveVoutValue, txDbID, voutIndex).Scan(&value)
+	err = db.QueryRow(internal.RetrieveVoutValue, txDbID, voutIndex+1).Scan(&value)
 	return
 }
 
