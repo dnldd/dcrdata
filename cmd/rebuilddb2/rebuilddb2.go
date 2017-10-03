@@ -205,6 +205,10 @@ func mainCore() error {
 		}
 	}
 
+	if cfg.ResumeInitSync {
+		dupChecks = false
+	}
+
 	startHeight := lastBlock + 1
 	for ib := startHeight; ib <= height; ib++ {
 		// check for quit signal
@@ -297,77 +301,96 @@ func mainCore() error {
 		// vouts' IDs, returning the transaction PK ID, which are stored in the
 		// containing block data struct.
 
+		var wg sync.WaitGroup
+		var regOK, stakeOK bool
 		// regular transactions
-		dbTransactions, dbTxVouts := dbtypes.ExtractBlockTransactions(msgBlock,
-			wire.TxTreeRegular, activeChain)
+		wg.Add(1)
+		go func() (err error) {
+			defer wg.Done()
+			dbTransactions, dbTxVouts := dbtypes.ExtractBlockTransactions(msgBlock,
+				wire.TxTreeRegular, activeChain)
 
-		dbBlock.TxDbIDs = make([]uint64, len(dbTransactions))
-		for it, dbtx := range dbTransactions {
-			dbtx.VoutDbIds, err = dcrpg.InsertVouts(db, dbTxVouts[it], dupChecks)
-			if err != nil && err != sql.ErrNoRows {
-				log.Errorln("InsertVouts:", err)
-				return err
-			}
-			if err == sql.ErrNoRows || len(dbTxVouts[it]) != len(dbtx.VoutDbIds) {
-				log.Warnf("Incomplete Vout insert.")
-				continue
-			}
-			totalVouts += int64(len(dbtx.VoutDbIds))
+			dbBlock.TxDbIDs = make([]uint64, len(dbTransactions))
+			for it, dbtx := range dbTransactions {
+				dbtx.VoutDbIds, err = dcrpg.InsertVouts(db, dbTxVouts[it], dupChecks)
+				if err != nil && err != sql.ErrNoRows {
+					log.Errorln("InsertVouts:", err)
+					return err
+				}
+				if err == sql.ErrNoRows || len(dbTxVouts[it]) != len(dbtx.VoutDbIds) {
+					log.Warnf("Incomplete Vout insert.")
+					continue
+				}
+				totalVouts += int64(len(dbtx.VoutDbIds))
 
-			dbtx.VinDbIds, err = dcrpg.InsertVins(db, dbtx.Vins)
-			if err != nil && err != sql.ErrNoRows {
-				log.Errorln("InsertVins:", err)
-				return err
-			}
-			totalVins += int64(len(dbtx.VinDbIds))
+				dbtx.VinDbIds, err = dcrpg.InsertVins(db, dbtx.Vins)
+				if err != nil && err != sql.ErrNoRows {
+					log.Errorln("InsertVins:", err)
+					return err
+				}
+				totalVins += int64(len(dbtx.VinDbIds))
 
-			// Store the tx PK ID in the block
-			dbtx.Vouts = dbTxVouts[it]
-			dbBlock.TxDbIDs[it], err = dcrpg.InsertTx(db, dbtx, dupChecks)
-			if err != nil && err != sql.ErrNoRows {
-				log.Errorln("InsertTx:", err)
-				return err
+				// Store the tx PK ID in the block
+				dbtx.Vouts = dbTxVouts[it]
+				dbBlock.TxDbIDs[it], err = dcrpg.InsertTx(db, dbtx, dupChecks)
+				if err != nil && err != sql.ErrNoRows {
+					log.Errorln("InsertTx:", err)
+					return err
+				}
 			}
-		}
-
-		totalTxs += int64(dbBlock.NumRegTx)
-		totalRTxs += int64(dbBlock.NumRegTx)
+			regOK = true
+			return
+		}()
 
 		// stake transactions
-		dbSTransactions, dbSTxVouts := dbtypes.ExtractBlockTransactions(msgBlock,
-			wire.TxTreeStake, activeChain)
+		wg.Add(1)
+		go func() (err error) {
+			defer wg.Done()
+			dbSTransactions, dbSTxVouts := dbtypes.ExtractBlockTransactions(msgBlock,
+				wire.TxTreeStake, activeChain)
 
-		dbBlock.STxDbIDs = make([]uint64, len(dbSTransactions))
-		for it, dbtx := range dbSTransactions {
-			dbtx.VoutDbIds, err = dcrpg.InsertVouts(db, dbSTxVouts[it], dupChecks)
-			if err != nil && err != sql.ErrNoRows {
-				log.Errorln("InsertVouts:", err)
-				return err
-			}
-			if err == sql.ErrNoRows || len(dbSTxVouts[it]) != len(dbtx.VoutDbIds) {
-				log.Warnf("Incomplete Vout insert.")
-				continue
-			}
-			totalVouts += int64(len(dbtx.VoutDbIds))
+			dbBlock.STxDbIDs = make([]uint64, len(dbSTransactions))
+			for it, dbtx := range dbSTransactions {
+				dbtx.VoutDbIds, err = dcrpg.InsertVouts(db, dbSTxVouts[it], dupChecks)
+				if err != nil && err != sql.ErrNoRows {
+					log.Errorln("InsertVouts:", err)
+					return err
+				}
+				if err == sql.ErrNoRows || len(dbSTxVouts[it]) != len(dbtx.VoutDbIds) {
+					log.Warnf("Incomplete Vout insert.")
+					continue
+				}
+				totalVouts += int64(len(dbtx.VoutDbIds))
 
-			dbtx.VinDbIds, err = dcrpg.InsertVins(db, dbtx.Vins)
-			if err != nil && err != sql.ErrNoRows {
-				log.Errorln("InsertVins:", err)
-				return err
-			}
-			totalVins += int64(len(dbtx.VinDbIds))
+				dbtx.VinDbIds, err = dcrpg.InsertVins(db, dbtx.Vins)
+				if err != nil && err != sql.ErrNoRows {
+					log.Errorln("InsertVins:", err)
+					return err
+				}
+				totalVins += int64(len(dbtx.VinDbIds))
 
-			// Store the tx PK ID in the block
-			dbtx.Vouts = dbSTxVouts[it]
-			dbBlock.STxDbIDs[it], err = dcrpg.InsertTx(db, dbtx, dupChecks)
-			if err != nil && err != sql.ErrNoRows {
-				log.Errorln("InsertTx:", err)
-				return err
+				// Store the tx PK ID in the block
+				dbtx.Vouts = dbSTxVouts[it]
+				dbBlock.STxDbIDs[it], err = dcrpg.InsertTx(db, dbtx, dupChecks)
+				if err != nil && err != sql.ErrNoRows {
+					log.Errorln("InsertTx:", err)
+					return err
+				}
 			}
-		}
+			stakeOK = true
+			return
+		}()
 
-		totalTxs += int64(dbBlock.NumStakeTx)
+		wg.Wait()
+
+		totalTxs += int64(dbBlock.NumRegTx + dbBlock.NumStakeTx)
+		totalRTxs += int64(dbBlock.NumRegTx)
 		totalSTxs += int64(dbBlock.NumStakeTx)
+
+		if !stakeOK || !regOK {
+			return fmt.Errorf("Tx/Vin/Vout insertion failed (R/S): %v/%v",
+				!stakeOK, !regOK)
+		}
 
 		// Store the block now that it has all it's transaction PK IDs
 		blockDbID, err := dcrpg.InsertBlock(db, &dbBlock, dupChecks)
