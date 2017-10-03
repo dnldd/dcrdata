@@ -145,12 +145,6 @@
   revision = "9520e82c474b0a04dd04f8a40959027271bab992"
 
 [[projects]]
-  branch = "addlog"
-  name = "github.com/prometheus/common"
-  packages = ["log"]
-  revision = "89d80287644767070914e30199b4d959e491bd3d"
-
-[[projects]]
   name = "github.com/rs/cors"
   packages = ["."]
   revision = "eabcc6af4bbe5ad3a949d36450326a2b0b9894b8"
@@ -176,12 +170,12 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows","windows/registry","windows/svc/eventlog"]
+  packages = ["unix"]
   revision = "429f518978ab01db8bb6f44b66785088e7fba58b"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d4ae2fc0fee2c9b071b01c425ca50ba3e6c8cec8dd203d25c58d53adf7792cf8"
+  inputs-digest = "5716c6a0303f9e7f0e60d04ef00ff912a7d4871a7cc9b0ce7cd900bb332ffff4"
   solver-name = "gps-cdcl"
   solver-version = 1
