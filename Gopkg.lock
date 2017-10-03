@@ -56,6 +56,12 @@
   revision = "94df605435ff3ac370e1ab342aa9f128d688d769"
 
 [[projects]]
+  name = "github.com/davecgh/go-spew"
+  packages = ["spew"]
+  revision = "346938d642f2ec3594ed81d874461961cd0faa76"
+  version = "v1.1.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/dchest/blake256"
   packages = ["."]
@@ -176,6 +182,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "65d5949035e487a096c2edbd2dddfe1c99952726e1330953eb1669d10086ce7e"
+  inputs-digest = "d4ae2fc0fee2c9b071b01c425ca50ba3e6c8cec8dd203d25c58d53adf7792cf8"
   solver-name = "gps-cdcl"
   solver-version = 1
